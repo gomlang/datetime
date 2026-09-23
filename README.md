@@ -57,7 +57,18 @@ Files containing leap records are rejected: this library uses POSIX seconds, so 
 
 `load` reads `/usr/share/zoneinfo`; `load_from` accepts an explicit trusted data directory. Names reject absolute paths, empty/dot/dot-dot components, NULs, backslashes, and characters outside ASCII letters/digits/`_+-/`. Normal distribution symlinks are followed, so the chosen directory is a trust boundary rather than a filesystem sandbox. File loading is bounded before parsing and closes its descriptor on success or failure. Both loading and decoding have a 16 MiB limit; transition counts are limited to 1,000,000, types to 256, designation storage to 65,536 bytes, and POSIX footers to 4,096 bytes. Existing zone handles retain their parsed snapshot when source files change. There is no process-global timezone mutation or mutable lookup cache.
 
-System lookup depends on the installed timezone data and does not invent a version identifier: TZif has no database-version field. Applications needing reproducibility should ship a selected dataset and call `load_from` or `from_tzif`.
+System lookup depends on the installed timezone data and does not invent a version identifier: TZif has no database-version field. Applications needing reproducibility can use the pinned `ecosystem::datetime::tzdata` package:
+
+```goml
+use ecosystem::datetime as dt;
+use ecosystem::datetime::tzdata;
+
+fn new_york() -> Result[dt::TimeZone, dt::Error] {
+    tzdata::load_versioned("America/New_York", tzdata::VERSION)
+}
+```
+
+The [bundled dataset](tzdata/README.md) embeds 598 compiled TZif zones and aliases from release `2026c`, with individual SHA-256 checksums. Loading it does not access system zoneinfo. `load` accepts a name without an expected version; `load_versioned` checks one explicitly. This snapshot is updated by regeneration, not automatically at runtime. Applications may also ship their own selected dataset and call `load_from` or `from_tzif`.
 
 `fixtures/VERSION` records `2026c`, as reported by the source system's `tzdata.zi`. The six bundled zone files are compiled distribution data, with individual hashes in `fixtures/SHA256SUMS`; the Dublin file uses the distribution's positive-DST compatibility encoding. These are test fixtures, not a bundled global timezone database. The IANA database is [public-domain data](https://data.iana.org/time-zones/tz-link.html). The separately authored raw `Synthetic/` fixtures are retained with [their complete type, transition and footer definitions](fixtures/README.md). Native GoML tests verify every fixture hash and independently rebuild all nine synthetic TZif files from RFC 9636 field layouts before comparing their bytes. No Python runtime is required.
 
@@ -69,7 +80,7 @@ Run from the repository root:
 just ecosystem-test datetime
 ```
 
-The verification runs 19 library tests, the independent versioned consumer, cached-build checks, 8,140 calendar/timezone/reference cases, and all 19 tests under Go's race detector. The concurrent test shares one immutable zone across 12 workers performing local resolution and reverse conversion.
+The verification runs library tests, the independent versioned consumer, cached-build checks, 8,140 calendar/timezone/reference cases, and library tests under Go's race detector. The concurrent test shares one immutable zone across 12 workers performing local resolution and reverse conversion.
 
 The native consumer test replays [8,140 independently produced reference vectors](../consumers/datetime/tests/data/README.md), without running Python or a reference executable. Their original sources are Python `datetime` for Gregorian/ISO-week arithmetic and month policies. Python `zoneinfo` reads the exact bundled zone bytes for historical second offsets, negative epochs, DST gaps/folds, skipped dates, non-hour transitions, and future timestamps beyond explicit records. Go `time.LoadLocationFromTZData` is an independent oracle for synthetic POSIX cases at nonnegative epochs. RFC 9636 supplies fixed expected values for the all-year DST fixture. The retained Go reference source documents those oracle semantics; ordinary tests use the frozen independent results.
 
