@@ -5,19 +5,27 @@ use std::bytes;
 use std::crypto::hash;
 use std::encoding::base64;
 
+fn entry(index: isize) -> (string, string, string) {
+    if index < FIRST_ENTRY_COUNT {
+        ENTRIES_FIRST[index]
+    } else {
+        ENTRIES_SECOND[index - FIRST_ENTRY_COUNT]
+    }
+}
+
 fn locate(name: string) -> Option[isize] {
     let mut low = 0;
     let mut high = ENTRY_COUNT;
     while low < high {
         let middle = low + (high - low) / 2;
-        let candidate = ENTRIES[middle].0;
+        let candidate = entry(middle).0;
         if candidate < name {
             low = middle + 1;
         } else {
             high = middle;
         }
     }
-    if low < ENTRY_COUNT && ENTRIES[low].0 == name {
+    if low < ENTRY_COUNT && entry(low).0 == name {
         Option::Some(low)
     } else {
         Option::None
@@ -27,7 +35,7 @@ fn locate(name: string) -> Option[isize] {
 pub fn names() -> Vec[string] {
     let result: Vec[string] = Vec::with_capacity(ENTRY_COUNT);
     for index in 0..ENTRY_COUNT {
-        result.push(ENTRIES[index].0);
+        result.push(entry(index).0);
     }
     result
 }
@@ -37,15 +45,16 @@ pub fn contains(name: string) -> bool {
 }
 
 pub fn checksum(name: string) -> Option[string] {
-    locate(name).map(|index| ENTRIES[index].2)
+    locate(name).map(|index| entry(index).2)
 }
 
 pub fn zone_bytes(name: string) -> Result[bytes::Bytes, datetime::Error] {
     let index = locate(name).ok_or(datetime::Error::TimeZone("unknown bundled timezone"))?;
-    let decoded = base64::decode(ENTRIES[index].1).map_err(
+    let value = entry(index);
+    let decoded = base64::decode(value.1).map_err(
         |_| datetime::Error::Invalid("invalid bundled timezone encoding"),
     )?;
-    if decoded.len() > 16777216 || hash::sha256(decoded) != ENTRIES[index].2 {
+    if decoded.len() > 16777216 || hash::sha256(decoded) != value.2 {
         return Result::Err(datetime::Error::Invalid("bundled timezone checksum mismatch"))
     }
     Result::Ok(decoded)

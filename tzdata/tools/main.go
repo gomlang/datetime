@@ -19,6 +19,18 @@ type entry struct {
 	digest string
 }
 
+func writeEntries(destination, name, symbol string, entries []entry) error {
+	var output strings.Builder
+	fmt.Fprintln(&output, "package tzdata;")
+	fmt.Fprintln(&output)
+	fmt.Fprintf(&output, "const %s: [(string, string, string); %d] = [\n", symbol, len(entries))
+	for _, item := range entries {
+		fmt.Fprintf(&output, "    (%s, %s, %s),\n", strconv.Quote(item.name), strconv.Quote(base64.StdEncoding.EncodeToString(item.data)), strconv.Quote(item.digest))
+	}
+	fmt.Fprintln(&output, "];")
+	return os.WriteFile(filepath.Join(destination, name), []byte(output.String()), 0644)
+}
+
 func validName(name string) bool {
 	if name == "" || strings.HasPrefix(name, "/") {
 		return false
@@ -136,15 +148,18 @@ func main() {
 	fmt.Fprintf(&output, "pub const VERSION: string = %s;\n", strconv.Quote(expected))
 	fmt.Fprintf(&output, "pub const ENTRY_COUNT: isize = %d;\n", len(entries))
 	fmt.Fprintf(&output, "pub const MANIFEST_SHA256: string = %q;\n", fmt.Sprintf("%x", sha256.Sum256([]byte(checksums.String()))))
-	fmt.Fprintf(&output, "const ENTRIES: [(string, string, string); %d] = [\n", len(entries))
-	for _, item := range entries {
-		fmt.Fprintf(&output, "    (%s, %s, %s),\n", strconv.Quote(item.name), strconv.Quote(base64.StdEncoding.EncodeToString(item.data)), strconv.Quote(item.digest))
-	}
-	fmt.Fprintln(&output, "];")
+	split := len(entries) / 2
+	fmt.Fprintf(&output, "const FIRST_ENTRY_COUNT: isize = %d;\n", split)
 	if err := os.MkdirAll(filepath.Join(destination, "data"), 0755); err != nil {
 		panic(err)
 	}
 	if err := os.WriteFile(filepath.Join(destination, "data.gom"), []byte(output.String()), 0644); err != nil {
+		panic(err)
+	}
+	if err := writeEntries(destination, "data_first.gom", "ENTRIES_FIRST", entries[:split]); err != nil {
+		panic(err)
+	}
+	if err := writeEntries(destination, "data_second.gom", "ENTRIES_SECOND", entries[split:]); err != nil {
 		panic(err)
 	}
 	if err := os.WriteFile(filepath.Join(destination, "data", "VERSION"), []byte(expected+"\n"), 0644); err != nil {

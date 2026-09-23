@@ -1,0 +1,9 @@
+package tzdata;
+
+pub const VERSION: string = "2026c";
+
+pub const ENTRY_COUNT: isize = 598;
+
+pub const MANIFEST_SHA256: string = "840d3c3fe76b8b374ea28f9f7a3e94a117681b72867d18e11ce5fffc6aa5a7c3";
+
+const FIRST_ENTRY_COUNT: isize = 299;
