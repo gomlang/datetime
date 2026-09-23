@@ -18,10 +18,10 @@ The snapshot was generated from Ubuntu `tzdata` package `2026c-0ubuntu0.24.04.1`
 The generator accepts only safe relative names whose file content begins with `TZif`. It resolves filesystem aliases within the source directory, adds IANA aliases declared in `tzdata.zi`, rejects files over 16 MiB, and writes deterministic sorted entries across `data_first.gom` and `data_second.gom`. It excludes `posix/`, leap-second `right/`, and machine-specific `localtime` and `posixrules` entries. To refresh from a trusted installed dataset:
 
 ```sh
-cd ecosystem/datetime/tzdata/tools
+cd tzdata/tools
 go run . /usr/share/zoneinfo 2026c ..
 cd ../..
-../../stage2/bin/goml fmt
+../../goml-dev/stage2/bin/goml fmt
 ```
 
 Record the new package version, `tzdata.zi` hash, entry count, and manifest hash here after regeneration. Generation requires local zoneinfo; building and testing the committed GoML package do not. Embedded bytes and checksums are public source data, so applications that need authenticated releases must verify their own dependency source. The library has no automatic data update mechanism; a new release requires regenerating and publishing a new package snapshot.
