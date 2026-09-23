@@ -1,0 +1,91 @@
+package tests;
+
+use ecosystem::datetime as dt;
+use ecosystem::datetime::tzdata;
+use std::bytes;
+use std::crypto::hash;
+use std::fs;
+use std::testing;
+
+fn instant(value: string) -> dt::UtcInstant {
+    testing::expect_ok(dt::UtcInstant::parse(value), "UTC instant")
+}
+
+fn local(value: string) -> dt::LocalDateTime {
+    testing::expect_ok(dt::LocalDateTime::parse(value), "local datetime")
+}
+
+#[test]
+fn embedded_dataset_is_versioned_complete_and_self_checked() -> () {
+    testing::assert_eq(tzdata::VERSION, "2026c");
+    testing::assert_eq(tzdata::ENTRY_COUNT, 598);
+    testing::assert_eq(
+        testing::expect_ok(hash::sha256_file("tzdata/data/SHA256SUMS"), "manifest"),
+        tzdata::MANIFEST_SHA256,
+    );
+    testing::assert_eq(
+        testing::expect_ok(fs::read_file_structured("tzdata/data/VERSION"), "version"),
+        "2026c\n",
+    );
+    let names = tzdata::names();
+    testing::assert_eq(names.len(), tzdata::ENTRY_COUNT);
+    for index in 0..names.len() {
+        if index > 0 {
+            testing::assert(names[index - 1] < names[index]);
+        }
+        let data = testing::expect_ok(tzdata::zone_bytes(names[index]), "bundled bytes");
+        testing::assert_eq(
+            hash::sha256(data),
+            testing::expect_some(tzdata::checksum(names[index]), "entry checksum"),
+        );
+        testing::assert_ok(tzdata::load(names[index]));
+    }
+    testing::assert(tzdata::contains("Etc/UTC"));
+    testing::assert(tzdata::contains("US/Eastern"));
+    testing::assert(!tzdata::contains("Unknown/Nowhere"));
+}
+
+#[test]
+fn embedded_dst_gap_fold_midnight_and_history_use_existing_parser() -> () {
+    let ny = testing::expect_ok(tzdata::load("America/New_York"), "New York");
+    match testing::expect_ok(ny.resolve_local(local("2024-03-10T02:30:00")), "gap") {
+        dt::LocalResult::Nonexistent => (),
+        _ => testing::fail("spring gap must remain nonexistent"),
+    }
+    match testing::expect_ok(ny.resolve_local(local("2024-11-03T01:30:00")), "fold") {
+        dt::LocalResult::Ambiguous(first, second) => {
+            testing::assert_eq(first.instant().to_string(), "2024-11-03T05:30:00Z");
+            testing::assert_eq(second.instant().to_string(), "2024-11-03T06:30:00Z");
+        },
+        _ => testing::fail("autumn fold must remain ambiguous"),
+    }
+    let apia = testing::expect_ok(tzdata::load("Pacific/Apia"), "Apia");
+    match testing::expect_ok(apia.resolve_local(local("2011-12-30T00:00:00")), "midnight") {
+        dt::LocalResult::Nonexistent => (),
+        _ => testing::fail("skipped local midnight must remain nonexistent"),
+    }
+    testing::assert_eq(
+        testing::expect_ok(ny.offset_at(instant("1800-01-01T00:00:00Z")), "historic offset").offset.seconds(),
+        -17762,
+    );
+    testing::assert_eq(
+        testing::expect_ok(
+            testing::expect_ok(tzdata::load("Europe/Dublin"), "Dublin").offset_at(
+                instant("1900-01-01T00:00:00Z"),
+            ),
+            "Dublin historic offset",
+        ).offset.seconds(),
+        -1521,
+    );
+}
+
+#[test]
+fn unknown_names_versions_and_corrupt_bytes_fail_recoverably() -> () {
+    testing::assert_err(tzdata::load("Unknown/Nowhere"));
+    testing::assert_err(tzdata::load("../Etc/UTC"));
+    testing::assert_err(tzdata::load_versioned("Etc/UTC", "2025a"));
+    testing::assert_ok(tzdata::load_versioned("Etc/UTC", tzdata::VERSION));
+    let broken = testing::expect_ok(tzdata::zone_bytes("Etc/UTC"), "UTC bytes").to_vec();
+    broken[0] = b'X';
+    testing::assert_err(dt::TimeZone::from_tzif("Etc/UTC", bytes::Bytes::from_vec(broken)));
+}
