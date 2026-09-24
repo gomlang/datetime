@@ -1,0 +1,6 @@
+[module]
+path = "consumer::datetime"
+
+[dependencies]
+"ecosystem::datetime" = "0.1.0"
+"ecosystem::verification" = "0.1.0"

@@ -1,0 +1,28 @@
+package tests;
+
+use ecosystem::datetime as dt;
+use ecosystem::datetime::tzdata;
+use std::testing;
+
+#[test]
+fn registry_bundled_timezone_data() -> () {
+    testing::assert_eq(tzdata::VERSION, "2026c");
+    testing::assert(tzdata::names().len() >= 400);
+    testing::assert(tzdata::contains("US/Eastern"));
+    testing::assert_err(tzdata::load_versioned("America/New_York", "2025c"));
+    let zone = testing::expect_ok(
+        tzdata::load_versioned("America/New_York", tzdata::VERSION),
+        "versioned New York",
+    );
+    let alias = testing::expect_ok(tzdata::load("US/Eastern"), "alias");
+    let instant = testing::expect_ok(dt::UtcInstant::parse("2024-07-01T12:00:00Z"), "instant");
+    testing::assert_eq(
+        testing::expect_ok(zone.offset_at(instant), "New York offset").offset.seconds(),
+        -14400,
+    );
+    testing::assert_eq(
+        testing::expect_ok(alias.offset_at(instant), "alias offset").offset.seconds(),
+        -14400,
+    );
+    testing::assert_err(tzdata::load("Missing/Zone"));
+}
