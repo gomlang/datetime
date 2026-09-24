@@ -74,15 +74,15 @@ The [bundled dataset](tzdata/README.md) embeds 598 compiled TZif zones and alias
 
 ## Verification and reference differences
 
-Run from the repository root:
+Run from this library repository:
 
 ```sh
-just ecosystem-test datetime
+(cd ../verification && just ecosystem-test datetime)
 ```
 
 The verification runs library tests, the independent versioned consumer, cached-build checks, 8,140 calendar/timezone/reference cases, and library tests under Go's race detector. The concurrent test shares one immutable zone across 12 workers performing local resolution and reverse conversion.
 
-The native consumer test replays [8,140 independently produced reference vectors](../../goml-dev/ecosystem/consumers/datetime/tests/data/README.md), without running Python or a reference executable. Their original sources are Python `datetime` for Gregorian/ISO-week arithmetic and month policies. Python `zoneinfo` reads the exact bundled zone bytes for historical second offsets, negative epochs, DST gaps/folds, skipped dates, non-hour transitions, and future timestamps beyond explicit records. Go `time.LoadLocationFromTZData` is an independent oracle for synthetic POSIX cases at nonnegative epochs. RFC 9636 supplies fixed expected values for the all-year DST fixture. The retained Go reference source documents those oracle semantics; ordinary tests use the frozen independent results.
+The native consumer test replays [8,140 independently produced reference vectors](consumer/tests/data/README.md), without running Python or a reference executable. Their original sources are Python `datetime` for Gregorian/ISO-week arithmetic and month policies. Python `zoneinfo` reads the exact bundled zone bytes for historical second offsets, negative epochs, DST gaps/folds, skipped dates, non-hour transitions, and future timestamps beyond explicit records. Go `time.LoadLocationFromTZData` is an independent oracle for synthetic POSIX cases at nonnegative epochs. RFC 9636 supplies fixed expected values for the all-year DST fixture. The retained Go reference source documents those oracle semantics; ordinary tests use the frozen independent results.
 
 Oracle selection follows the specifications, because the reference implementations also have edge cases:
 
