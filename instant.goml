@@ -93,6 +93,33 @@ impl Duration {
     pub fn checked_negate(self: Duration) -> Result[Duration, Error] {
         Duration::new(-self.seconds_value, -self.nanos_value.to_i64())
     }
+
+    pub fn checked_multiply(self: Duration, factor: i64) -> Result[Duration, Error] {
+        let mut result = Duration::nanoseconds(0);
+        if factor == 0 {
+            return Result::Ok(result)
+        }
+        let mut remaining = if factor < 0 {
+            (-(factor + 1)).to_u64() + 1
+        } else {
+            factor.to_u64()
+        };
+        let mut addend = if factor < 0 {
+            self.checked_negate()?
+        } else {
+            self
+        };
+        while remaining != 0 {
+            if remaining % 2 == 1 {
+                result = result.checked_add(addend)?;
+            }
+            remaining /= 2;
+            if remaining != 0 {
+                addend = addend.checked_add(addend)?;
+            }
+        }
+        Result::Ok(result)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

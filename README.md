@@ -29,6 +29,15 @@ fn appointment() -> Result[dt::ZonedDateTime, dt::Error] {
 
 `resolve_local` returns `Unique`, `Ambiguous(earlier, later)`, or `Nonexistent`. Candidates retain the original nanoseconds. `FoldPolicy` selects an earlier/later instant or rejects ambiguity; gaps always remain errors when resolving. A fabricated timezone with more than two candidates returns `Unsupported`. Out-of-calendar-range conversions return `OutOfRange`, not a DST gap.
 
+`Duration::checked_multiply(factor)` scales elapsed time by a signed `i64`
+without converting the complete duration to nanoseconds. It preserves fractional
+nanoseconds exactly, including negative durations and factors. Zero always yields
+zero. Results outside the existing normalized duration bounds return `OutOfRange`;
+the algorithm uses at most 64 checked doubling steps, including for `i64::MIN`.
+For example, `Duration::new(1, 500000000)?.checked_multiply(3)?` is 4.5 seconds.
+This scales elapsed time; calendar month/year operations retain their explicit
+day policy.
+
 ## Text and serialization
 
 `Date::parse`, `Time::parse`, and `LocalDateTime::parse` accept their exact ISO-shaped representations, requiring seconds and at most nine fractional digits. `OffsetDateTime::parse_rfc3339` additionally requires a known numeric offset or `Z`; RFC-permitted lowercase `t`/`z` are accepted. It rejects leap seconds, extra precision, trailing input, offset hours above 23, second-precision offsets, and unknown local offset `-00:00`. `to_rfc3339` rejects offsets the format cannot represent. `to_string` on an offset datetime remains lossless for historical second offsets.
