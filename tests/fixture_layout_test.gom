@@ -76,7 +76,7 @@ fn tzif(version: byte, types: Vec[ZoneType], transitions: Vec[(i64, byte)], foot
 
 fn check_fixture(name: string, generated: bytes::Bytes) -> () {
     let existing = testing::expect_ok(
-        fs::read_bytes_structured("fixtures/Synthetic/" + name),
+        fs::read_bytes_structured("examples/basic/testdata/zones/Synthetic/" + name),
         "synthetic TZif fixture",
     );
     testing::assert_eq(generated.len(), existing.len());

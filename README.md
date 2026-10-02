@@ -70,7 +70,7 @@ fn new_york() -> Result[dt::TimeZone, dt::Error] {
 
 The [bundled dataset](tzdata/README.md) embeds 598 compiled TZif zones and aliases from release `2026c`, with individual SHA-256 checksums. Loading it does not access system zoneinfo. `load` accepts a name without an expected version; `load_versioned` checks one explicitly. This snapshot is updated by regeneration, not automatically at runtime. Applications may also ship their own selected dataset and call `load_from` or `from_tzif`.
 
-`fixtures/VERSION` records `2026c`, as reported by the source system's `tzdata.zi`. The six bundled zone files are compiled distribution data, with individual hashes in `fixtures/SHA256SUMS`; the Dublin file uses the distribution's positive-DST compatibility encoding. These are test fixtures, not a bundled global timezone database. The IANA database is [public-domain data](https://data.iana.org/time-zones/tz-link.html). The separately authored raw `Synthetic/` fixtures are retained with [their complete type, transition and footer definitions](fixtures/README.md). Native GoML tests verify every fixture hash and independently rebuild all nine synthetic TZif files from RFC 9636 field layouts before comparing their bytes. No Python runtime is required.
+`examples/basic/testdata/zones/VERSION` records `2026c`, as reported by the source system's `tzdata.zi`. The six bundled zone files are compiled distribution data, with individual hashes in `examples/basic/testdata/zones/SHA256SUMS`; the Dublin file uses the distribution's positive-DST compatibility encoding. These are test fixtures, not a bundled global timezone database. The IANA database is [public-domain data](https://data.iana.org/time-zones/tz-link.html). The separately authored raw `Synthetic/` fixtures are retained with [their complete type, transition and footer definitions](examples/basic/testdata/zones/README.md). Native GoML tests verify every fixture hash and independently rebuild all nine synthetic TZif files from RFC 9636 field layouts before comparing their bytes. No Python runtime is required.
 
 ## Verification and reference differences
 
@@ -80,9 +80,9 @@ Run from this library repository:
 (cd ../verification && just ecosystem-test datetime)
 ```
 
-The verification runs library tests, the independent versioned consumer, cached-build checks, 8,140 calendar/timezone/reference cases, and library tests under Go's race detector. The concurrent test shares one immutable zone across 12 workers performing local resolution and reverse conversion.
+The verification runs library tests, the example and its independent downstream verification, cached-build checks, 8,140 calendar/timezone/reference cases, and library tests under Go's race detector. The concurrent test shares one immutable zone across 12 workers performing local resolution and reverse conversion.
 
-The native consumer test replays [8,140 independently produced reference vectors](consumer/tests/data/README.md), without running Python or a reference executable. Their original sources are Python `datetime` for Gregorian/ISO-week arithmetic and month policies. Python `zoneinfo` reads the exact bundled zone bytes for historical second offsets, negative epochs, DST gaps/folds, skipped dates, non-hour transitions, and future timestamps beyond explicit records. Go `time.LoadLocationFromTZData` is an independent oracle for synthetic POSIX cases at nonnegative epochs. RFC 9636 supplies fixed expected values for the all-year DST fixture. The retained Go reference source documents those oracle semantics; ordinary tests use the frozen independent results.
+The native example test replays [8,140 independently produced reference vectors](examples/basic/tests/data/README.md), without running Python or a reference executable. Their original sources are Python `datetime` for Gregorian/ISO-week arithmetic and month policies. Python `zoneinfo` reads the exact bundled zone bytes for historical second offsets, negative epochs, DST gaps/folds, skipped dates, non-hour transitions, and future timestamps beyond explicit records. Go `time.LoadLocationFromTZData` is an independent oracle for synthetic POSIX cases at nonnegative epochs. RFC 9636 supplies fixed expected values for the all-year DST fixture. The retained Go reference source documents those oracle semantics; ordinary tests use the frozen independent results.
 
 Oracle selection follows the specifications, because the reference implementations also have edge cases:
 
@@ -91,3 +91,15 @@ Oracle selection follows the specifications, because the reference implementatio
 - Go 1.25's negative-epoch POSIX-tail calculation also differs at some year boundaries: `STD0DST,M1.1.0/-167,M12.5.0/167` at `1900-01-01T00:00:01Z` reports standard time despite lying inside the specified daylight interval. Synthetic Go comparisons use nonnegative epochs; historical negative-epoch comparisons remain covered by the actual IANA files and Python.
 
 The library implements calendar and timezone policies, not leap-second/TAI arithmetic, alternative calendars, localized rendering, recurrence scheduling, or automatic timezone-data updates. Bounds failures, unsupported data, and parse failures are recoverable `Error` values.
+
+## Development and examples
+
+Requires GoML 0.1.55 or newer. The `examples/basic/` example shares the root manifest; test-only helpers are declared in `[dev-dependencies]`. From the library root, run:
+
+```sh
+goml run --example basic
+goml test
+goml verify --timeout 300s
+```
+
+`goml test` builds the example and runs its tests. `goml verify` repeats the example checks as an independent module against an isolated registry snapshot. `(cd ../verification && just ecosystem-test datetime)` also retains the library-specific smoke and compatibility checks.

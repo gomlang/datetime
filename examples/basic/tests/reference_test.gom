@@ -1,7 +1,7 @@
 package tests;
 
 use ecosystem::verification::reference;
-use consumer::datetime as application;
+use ecosystem::datetime::examples::basic as application;
 use std::testing;
 use std::fs;
 use std::json;
@@ -30,7 +30,7 @@ fn independent_calendar_zoneinfo_and_go_time_vectors() -> () {
     for row in rows {
         inputs.push(testing::expect_some(json::as_string(field(row, "input")), "input"));
     }
-    let output = application::reference_cases(inputs, "../../datetime/fixtures");
+    let output = application::reference_cases(inputs, application::fixture_path("testdata/zones"));
     testing::assert_eq(output.len(), rows.len());
     for index in 0..rows.len() {
         testing::assert_eq(
@@ -42,7 +42,7 @@ fn independent_calendar_zoneinfo_and_go_time_vectors() -> () {
 
 #[test]
 fn timezone_fixtures_match_pinned_checksums() -> () {
-    let root = "../../datetime/fixtures/";
+    let root = application::fixture_path("testdata/zones/");
     let manifest = testing::expect_ok(
         fs::read_file_structured(root + "SHA256SUMS"),
         "fixture checksums",

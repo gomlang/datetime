@@ -1,6 +1,6 @@
 package tests;
 
-use consumer::datetime as app;
+use ecosystem::datetime::examples::basic as app;
 use std::testing;
 
 #[test]

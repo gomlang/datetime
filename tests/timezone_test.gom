@@ -7,7 +7,10 @@ use std::bytes;
 use std::task;
 
 fn zone(name: string) -> dt::TimeZone {
-    testing::expect_ok(dt::TimeZone::load_from("fixtures", name), "fixture zone")
+    testing::expect_ok(
+        dt::TimeZone::load_from("examples/basic/testdata/zones", name),
+        "fixture zone",
+    )
 }
 
 fn utc(text: string) -> dt::UtcInstant {
@@ -185,10 +188,10 @@ fn loading_rejects_traversal_and_malformed_tzif() -> () {
             "Etc\\UTC",
         ],
     ) {
-        testing::assert_err(dt::TimeZone::load_from("fixtures", name));
+        testing::assert_err(dt::TimeZone::load_from("examples/basic/testdata/zones", name));
     }
     let original = testing::expect_ok(
-        fs::read_bytes_structured("fixtures/America/New_York"),
+        fs::read_bytes_structured("examples/basic/testdata/zones/America/New_York"),
         "fixture",
     );
     for length in Vec::from_array([0, 1, 4, 43, 44, 100, original.len() - 1]) {
@@ -233,7 +236,7 @@ fn tzif_missing_future_rules_are_rejected_after_final_transition() -> () {
 #[test]
 fn tzif_rejects_invalid_transition_indices_flags_and_footer() -> () {
     let source = testing::expect_ok(
-        fs::read_bytes_structured("fixtures/Synthetic/Finite"),
+        fs::read_bytes_structured("examples/basic/testdata/zones/Synthetic/Finite"),
         "fixture",
     );
     let second_header = 44 + 12 + 8;
@@ -259,7 +262,10 @@ fn tzif_rejects_invalid_transition_indices_flags_and_footer() -> () {
 
 #[test]
 fn copied_tzif_data_and_fixed_boundary_conversions() -> () {
-    let source = testing::expect_ok(fs::read_bytes_structured("fixtures/Etc/UTC"), "fixture");
+    let source = testing::expect_ok(
+        fs::read_bytes_structured("examples/basic/testdata/zones/Etc/UTC"),
+        "fixture",
+    );
     let loaded = testing::expect_ok(dt::TimeZone::from_tzif("snapshot", source), "snapshot");
     source.clear();
     testing::assert_eq(
@@ -314,7 +320,7 @@ fn permanent_dst_versions_and_unspecified_local_time() -> () {
     let unknown = testing::expect_ok(dt::TimeZone::from_posix("unknown", "<-00>0"), "unknown zone");
     testing::assert_err(unknown.offset_at(utc("2024-01-01T00:00:00Z")));
     let modern = testing::expect_ok(
-        fs::read_bytes_structured("fixtures/Synthetic/Extreme"),
+        fs::read_bytes_structured("examples/basic/testdata/zones/Synthetic/Extreme"),
         "modern fixture",
     );
     modern.set(4, b'2');
