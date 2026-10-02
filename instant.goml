@@ -120,6 +120,60 @@ impl Duration {
         }
         Result::Ok(result)
     }
+
+    pub fn checked_divide(self: Duration, divisor: i64) -> Result[Duration, Error] {
+        if divisor == 0 {
+            return Result::Err(Error::Invalid("duration division by zero"))
+        }
+        let negative = self.seconds_value < 0;
+        let seconds = if negative {
+            -self.whole_seconds()
+        } else {
+            self.seconds_value
+        }.to_u64();
+        let nanos = if negative && self.nanos_value != 0 {
+            1000000000 - self.nanos_value
+        } else {
+            self.nanos_value
+        }.to_u64();
+        let divisor_magnitude = if divisor < 0 {
+            (-(divisor + 1)).to_u64() + 1
+        } else {
+            divisor.to_u64()
+        };
+        let (whole, fraction) = divide_duration_magnitude(seconds, nanos, divisor_magnitude);
+        if negative != (divisor < 0) {
+            Duration::new(-whole.to_i64(), -fraction.to_i64())
+        } else {
+            Duration::new(whole.to_i64(), fraction.to_i64())
+        }
+    }
+}
+
+fn divide_duration_magnitude(seconds: u64, nanos: u64, divisor: u64) -> (u64, u64) {
+    let low = (seconds & 4294967295) * 1000000000 + nanos;
+    let upper = (seconds >> 32) * 1000000000 + (low >> 32);
+    let limbs = Vec::from_array([low & 4294967295, upper & 4294967295, upper >> 32]);
+    let mut remainder: u64 = 0;
+    let mut whole: u64 = 0;
+    let mut fraction: u64 = 0;
+    let mut position = 96;
+    while position > 0 {
+        position -= 1;
+        remainder = remainder * 2 + ((limbs[position / 32] >> (position % 32).to_u64()) & 1);
+        let bit: u64 = if remainder >= divisor {
+            1
+        } else {
+            0
+        };
+        if bit == 1 {
+            remainder -= divisor;
+        }
+        fraction = fraction * 2 + bit;
+        whole = whole * 2 + fraction / 1000000000;
+        fraction %= 1000000000;
+    }
+    return (whole, fraction)
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

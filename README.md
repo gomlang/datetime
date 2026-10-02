@@ -38,6 +38,14 @@ For example, `Duration::new(1, 500000000)?.checked_multiply(3)?` is 4.5 seconds.
 This scales elapsed time; calendar month/year operations retain their explicit
 day policy.
 
+`Duration::checked_divide(divisor)` divides elapsed time by a signed `i64`,
+rounding fractional nanoseconds toward zero. It supports the entire duration
+range without converting it to a signed 64-bit nanosecond count. Zero divisors
+return `Invalid`; an unrepresentable result (possible when dividing the upper
+fractional endpoint by -1) returns `OutOfRange`. The minimum `i64` divisor is
+supported without overflowing its absolute value. Division uses 96 bounded
+bit steps, including for values too large for `checked_nanoseconds`.
+
 ## Text and serialization
 
 `Date::parse`, `Time::parse`, and `LocalDateTime::parse` accept their exact ISO-shaped representations, requiring seconds and at most nine fractional digits. `OffsetDateTime::parse_rfc3339` additionally requires a known numeric offset or `Z`; RFC-permitted lowercase `t`/`z` are accepted. It rejects leap seconds, extra precision, trailing input, offset hours above 23, second-precision offsets, and unknown local offset `-00:00`. `to_rfc3339` rejects offsets the format cannot represent. `to_string` on an offset datetime remains lossless for historical second offsets.
