@@ -153,13 +153,13 @@ func main() {
 	if err := os.MkdirAll(filepath.Join(destination, "data"), 0755); err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile(filepath.Join(destination, "data.gom"), []byte(output.String()), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(destination, "data.goml"), []byte(output.String()), 0644); err != nil {
 		panic(err)
 	}
-	if err := writeEntries(destination, "data_first.gom", "ENTRIES_FIRST", entries[:split]); err != nil {
+	if err := writeEntries(destination, "data_first.goml", "ENTRIES_FIRST", entries[:split]); err != nil {
 		panic(err)
 	}
-	if err := writeEntries(destination, "data_second.gom", "ENTRIES_SECOND", entries[split:]); err != nil {
+	if err := writeEntries(destination, "data_second.goml", "ENTRIES_SECOND", entries[split:]); err != nil {
 		panic(err)
 	}
 	if err := os.WriteFile(filepath.Join(destination, "data", "VERSION"), []byte(expected+"\n"), 0644); err != nil {
