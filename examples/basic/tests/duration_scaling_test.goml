@@ -1,0 +1,72 @@
+package tests;
+
+use ecosystem::datetime::{Duration, UtcInstant};
+use std::testing;
+
+#[test]
+fn checked_scaling_preserves_signed_nanoseconds() -> () {
+    for nanos in Vec::from_array([-2000000001, -1500000000, -1, 0, 1, 1500000000, 2000000001]) {
+        for factor in -31..=31 {
+            let result = testing::expect_ok(
+                Duration::nanoseconds(nanos).checked_multiply(factor.to_i64()),
+                "scaled duration",
+            );
+            testing::assert_eq(
+                testing::expect_ok(result.checked_nanoseconds(), "nanoseconds"),
+                nanos * factor.to_i64(),
+            );
+        }
+    }
+    let instant = testing::expect_ok(UtcInstant::parse("2024-01-01T00:00:00Z"), "instant");
+    let elapsed = testing::expect_ok(Duration::new(1, 500000000), "elapsed");
+    let scaled = testing::expect_ok(elapsed.checked_multiply(-3), "negative scale");
+    testing::assert_eq(
+        testing::expect_ok(instant.checked_add(scaled), "shifted instant").to_string(),
+        "2023-12-31T23:59:55.5Z",
+    );
+}
+
+#[test]
+fn checked_scaling_handles_calendar_and_integer_boundaries() -> () {
+    let one_day = testing::expect_ok(Duration::days(1), "day");
+    let maximum = testing::expect_ok(one_day.checked_multiply(3652059), "full range");
+    testing::assert_eq(maximum.floor_seconds(), 315537897600);
+    testing::assert_err(maximum.checked_nanoseconds());
+    testing::assert_err(one_day.checked_multiply(3652060));
+    testing::assert_eq(
+        testing::expect_ok(maximum.checked_multiply(-1), "negate maximum").floor_seconds(),
+        -315537897600,
+    );
+    let upper = testing::expect_ok(Duration::new(315537897600, 999999999), "upper fractional limit");
+    testing::assert_eq(testing::expect_ok(upper.checked_multiply(1), "identity"), upper);
+    testing::assert_err(upper.checked_multiply(-1));
+    testing::assert_eq(
+        testing::expect_ok(upper.checked_multiply(0), "zero"),
+        Duration::nanoseconds(0),
+    );
+    let minimum: i64 = -9223372036854775807 - 1;
+    let maximum_factor: i64 = 9223372036854775807;
+    testing::assert_eq(
+        testing::expect_ok(Duration::nanoseconds(1).checked_multiply(minimum), "minimum factor"),
+        Duration::nanoseconds(minimum),
+    );
+    testing::assert_eq(
+        testing::expect_ok(
+            Duration::nanoseconds(1).checked_multiply(maximum_factor),
+            "maximum factor",
+        ),
+        Duration::nanoseconds(maximum_factor),
+    );
+    let positive = testing::expect_ok(
+        Duration::nanoseconds(-1).checked_multiply(minimum),
+        "negative times minimum",
+    );
+    testing::assert_eq(positive.floor_seconds(), 9223372036);
+    testing::assert_eq(positive.subsecond_nanoseconds(), 854775808);
+    testing::assert_err(positive.checked_nanoseconds());
+    testing::assert_err(one_day.checked_multiply(minimum));
+    testing::assert_eq(
+        testing::expect_ok(Duration::nanoseconds(0).checked_multiply(minimum), "zero times minimum"),
+        Duration::nanoseconds(0),
+    );
+}
