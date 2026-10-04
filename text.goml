@@ -12,6 +12,13 @@ fn parse_error(offset: isize, message: string) -> Error {
     Error::Parse { offset, message }
 }
 
+fn parse_error_at(error: Error, start: isize) -> Error {
+    match error {
+        Error::Parse { offset, message } => Error::Parse { offset: start + offset, message },
+        other => other,
+    }
+}
+
 fn digits(text: string, start: isize, length: isize) -> Result[isize, Error] {
     if start < 0 || length < 1 || start + length > text.byte_len() {
         return Result::Err(parse_error(start, "missing digits"));
@@ -105,7 +112,9 @@ impl LocalDateTime {
         separator(text, 10, b'T')?;
         Result::Ok(
             Date::parse(text.byte_slice(0, 10))?.at(
-                Time::parse(text.byte_slice(11, text.byte_len()))?,
+                Time::parse(text.byte_slice(11, text.byte_len())).map_err(
+                    |error| parse_error_at(error, 11),
+                )?,
             ),
         )
     }
@@ -208,7 +217,7 @@ impl OffsetDateTime {
                     ),
                 );
             }
-            let offset = Offset::parse(suffix)?;
+            let offset = Offset::parse(suffix).map_err(|error| parse_error_at(error, offset_start))?;
             if offset.seconds_value <= -86400 || offset.seconds_value >= 86400 {
                 return Result::Err(parse_error(offset_start, "RFC3339 offset hour exceeds 23"));
             }
@@ -218,7 +227,9 @@ impl OffsetDateTime {
             return Result::Err(parse_error(10, "RFC3339 requires T separator"));
         }
         let date = Date::parse(text.byte_slice(0, 10))?;
-        let time = Time::parse(text.byte_slice(11, offset_start))?;
+        let time = Time::parse(text.byte_slice(11, offset_start)).map_err(
+            |error| parse_error_at(error, 11),
+        )?;
         date.at(time).assume_offset(offset)
     }
 

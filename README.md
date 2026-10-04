@@ -57,6 +57,9 @@ bit steps, including for values too large for `checked_nanoseconds`.
 
 Local and offset datetimes support formatting directives `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, `%f` (nine digits), `%j`, `%u`, `%G`, `%V`, `%F`, `%T`, `%z`, `%:z`, and `%%`. Literal Unicode is preserved. Offset directives on a local datetime and unknown directives return errors. Arbitrary-pattern parsing, localized month/day names, and locale databases are not implemented.
 
+Text parse errors report zero-based byte offsets into the complete supplied
+string, including errors in nested time and UTC-offset fields.
+
 Serde validates values on decoding:
 
 | Type | Representation in all formats |

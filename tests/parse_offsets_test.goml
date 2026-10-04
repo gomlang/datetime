@@ -1,0 +1,40 @@
+package tests;
+
+use ecosystem::datetime as dt;
+use std::testing;
+
+fn expect_parse_offset[T](result: Result[T, dt::Error], expected: isize) -> () {
+    match testing::expect_err(result, "parse error") {
+        dt::Error::Parse { offset, .. } => testing::assert_eq(offset, expected),
+        error => testing::fail("expected parse location: " + error.to_string()),
+    }
+}
+
+#[test]
+fn nested_datetime_parsers_report_offsets_in_the_complete_input() -> () {
+    for (text, offset) in Vec::from_array(
+        [
+            ("2024-01-01T00:0x:00", 15),
+            ("2024-01-01T00:00:00.1x", 21),
+            ("2024-01-01T00-00:00", 13),
+            ("202x-01-01T00:00:00", 3),
+        ],
+    ) {
+        expect_parse_offset(dt::LocalDateTime::parse(text), offset);
+        expect_parse_offset(dt::OffsetDateTime::parse_rfc3339(text + "Z"), offset);
+        expect_parse_offset(dt::UtcInstant::parse(text + "Z"), offset);
+    }
+    for (text, offset) in Vec::from_array(
+        [
+            ("2024-01-01T00:00:00+0x:00", 21),
+            ("2024-01-01T00:00:00+01-00", 22),
+            ("2024-01-01T00:00:00.123456789+01:0x", 34),
+            ("2024-01-01t00:00:00+01:99", 23),
+        ],
+    ) {
+        expect_parse_offset(dt::OffsetDateTime::parse_rfc3339(text), offset);
+        expect_parse_offset(dt::UtcInstant::parse(text), offset);
+    }
+    expect_parse_offset(dt::Time::parse("00:0x:00"), 4);
+    expect_parse_offset(dt::Offset::parse("+0x:00"), 2);
+}
