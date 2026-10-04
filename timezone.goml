@@ -26,6 +26,7 @@ pub struct TimeZone {
     types: Vec[ZoneInfo],
     future: Option[PosixRules],
     finite: bool,
+    local_types_complete: bool,
 }
 
 pub struct ZonedDateTime {
@@ -70,6 +71,7 @@ impl TimeZone {
             types: Vec::from_array([info]),
             future: Option::None,
             finite: false,
+            local_types_complete: true,
         }
     }
 
@@ -77,7 +79,9 @@ impl TimeZone {
         let future = parse_posix(rule, true)?;
         let types = Vec::from_array([future.standard]);
         if let Some(daylight) = future.daylight {
-            types.push(daylight);
+            if daylight.offset != future.standard.offset {
+                types.push(daylight);
+            }
         }
         Result::Ok(
             TimeZone {
@@ -86,6 +90,7 @@ impl TimeZone {
                 types,
                 future: Option::Some(future),
                 finite: false,
+                local_types_complete: true,
             },
         )
     }
@@ -184,25 +189,42 @@ impl TimeZone {
     }
 
     pub fn resolve_local(self: TimeZone, local: LocalDateTime) -> Result[LocalResult, Error] {
-        let offsets: Vec[Offset] = Vec::new();
-        for info in self.types {
-            offsets.push(info.offset);
-        }
-        if let Some(rules) = self.future {
-            offsets.push(rules.standard.offset);
-            if let Some(info) = rules.daylight {
+        // Fixed and POSIX constructors already provide every distinct offset.
+        // TZif must also include footer offsets and deduplicate historical types.
+        let general: Option[(Vec[Offset], HashMap[isize, bool])] = if self.local_types_complete {
+            Option::None
+        } else {
+            let offsets: Vec[Offset] = Vec::new();
+            for info in self.types {
                 offsets.push(info.offset);
             }
-        }
+            if let Some(rules) = self.future {
+                offsets.push(rules.standard.offset);
+                if let Some(info) = rules.daylight {
+                    offsets.push(info.offset);
+                }
+            }
+            Option::Some((offsets, HashMap::new()))
+        };
+        let count = match general {
+            None => self.types.len(),
+            Some((offsets, _)) => offsets.len(),
+        };
         let candidates: Vec[ZonedDateTime] = Vec::new();
-        let seen: HashMap[isize, bool] = HashMap::new();
         let mut unsupported: Option[Error] = Option::None;
         let mut out_of_range = false;
-        for offset in offsets {
-            if seen.get(offset.seconds_value).is_some() {
-                continue;
-            }
-            seen.set(offset.seconds_value, true);
+        for index in 0..count {
+            let offset = match general {
+                None => self.types[index].offset,
+                Some((offsets, seen)) => {
+                    let offset = offsets[index];
+                    if seen.get(offset.seconds_value).is_some() {
+                        continue;
+                    }
+                    seen.set(offset.seconds_value, true);
+                    offset
+                },
+            };
             let datetime = match local.assume_offset(offset) {
                 Ok(value) => value,
                 Err(_) => {
@@ -472,7 +494,14 @@ impl TimeZone {
             return Result::Err(tz_error("trailing version-one TZif bytes"));
         }
         let finite = future.is_none() && !transitions.is_empty();
-        let zone = TimeZone { name_value: name, transitions, types, future, finite };
+        let zone = TimeZone {
+            name_value: name,
+            transitions,
+            types,
+            future,
+            finite,
+            local_types_complete: false,
+        };
         if let Some(rules) = future {
             if let Some(last) = zone.last_explicit_transition() {
                 if let Ok(instant) = UtcInstant::new(last, 0) {

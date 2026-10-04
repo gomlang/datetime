@@ -360,3 +360,35 @@ fn immutable_zones_support_concurrent_conversion_and_resolution() -> () {
         },
     );
 }
+
+#[test]
+fn same_offset_posix_rules_preserve_seasonal_metadata() -> () {
+    let rules = testing::expect_ok(
+        dt::TimeZone::from_posix("same offset", "STD0DST0,M3.2.0,M11.1.0"),
+        "same-offset POSIX rules",
+    );
+    for (text, abbreviation, daylight) in[
+        ("2024-01-15T12:30:00.123456789", "STD", false),
+        ("2024-03-10T01:59:59.999999999", "STD", false),
+        ("2024-03-10T02:00:00", "DST", true),
+        ("2024-07-15T12:30:00.123456789", "DST", true),
+        ("2024-11-03T01:59:59.999999999", "DST", true),
+        ("2024-11-03T02:00:00", "STD", false),
+    ] {
+        let wall = local(text);
+        match testing::expect_ok(rules.resolve_local(wall), "resolve same offset") {
+            dt::LocalResult::Unique(value) => {
+                testing::assert_eq(value.local(), wall);
+                testing::assert_eq(value.instant(), wall.assume_utc());
+                testing::assert_eq(value.info().abbreviation, abbreviation);
+                testing::assert_eq(value.info().is_dst, daylight);
+                testing::assert_eq(value.info().offset, dt::Offset::utc());
+                testing::assert_eq(
+                    testing::expect_ok(rules.offset_at(value.instant()), "instant metadata"),
+                    value.info(),
+                );
+            },
+            _ => testing::fail("equal offsets must produce exactly one candidate"),
+        }
+    }
+}

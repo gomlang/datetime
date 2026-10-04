@@ -34,6 +34,12 @@ datetime. A nonmatching offset cannot invalidate another representable candidate
 near years 1 or 9999. Missing future rules and unspecified timezone intervals still
 return `Unsupported` when they prevent determining all candidates.
 
+Fixed and POSIX timezones resolve local times using the distinct offsets already
+held by the zone, avoiding a temporary offset list and deduplication map for each
+lookup. POSIX rules still select the effective designation and DST metadata when
+standard and daylight offsets are equal. TZif zones retain per-lookup candidate
+collection across historical types and future rules.
+
 `Duration::checked_multiply(factor)` scales elapsed time by a signed `i64`
 without converting the complete duration to nanoseconds. It preserves fractional
 nanoseconds exactly, including negative durations and factors. Zero always yields
