@@ -29,6 +29,11 @@ fn appointment() -> Result[dt::ZonedDateTime, dt::Error] {
 
 `resolve_local` returns `Unique`, `Ambiguous(earlier, later)`, or `Nonexistent`. Candidates retain the original nanoseconds. `FoldPolicy` selects an earlier/later instant or rejects ambiguity; gaps always remain errors when resolving. A fabricated timezone with more than two candidates returns `Unsupported`. Out-of-calendar-range conversions return `OutOfRange`, not a DST gap.
 
+Resolution checks each candidate's effective offset before constructing its local
+datetime. A nonmatching offset cannot invalidate another representable candidate
+near years 1 or 9999. Missing future rules and unspecified timezone intervals still
+return `Unsupported` when they prevent determining all candidates.
+
 `Duration::checked_multiply(factor)` scales elapsed time by a signed `i64`
 without converting the complete duration to nanoseconds. It preserves fractional
 nanoseconds exactly, including negative durations and factors. Zero always yields

@@ -1,0 +1,63 @@
+package tests;
+
+use ecosystem::datetime as dt;
+use std::testing;
+
+fn resolved_boundary(rule: string, local_text: string, instant_text: string) -> () {
+    let zone = testing::expect_ok(dt::TimeZone::from_posix("boundary", rule), "zone");
+    let input = local(local_text);
+    let expected = utc(instant_text);
+    testing::assert_eq(
+        testing::expect_ok(zone.at(expected), "representable conversion").local(),
+        input,
+    );
+    let resolved = testing::expect_ok(zone.resolve_local(input), "resolve representable local time");
+    match resolved {
+        dt::LocalResult::Unique(value) => {
+            testing::assert_eq(value.instant(), expected);
+            testing::assert_eq(value.local(), input);
+            testing::assert(!value.info().is_dst);
+        },
+        _ => testing::fail("boundary has one matching offset"),
+    }
+}
+
+#[test]
+fn local_resolution_near_minimum_ignores_nonmatching_offset_overflow() -> () {
+    for (input, expected) in Vec::from_array(
+        [
+            ("0001-01-01T00:00:00.000000001", "0001-01-01T01:00:00.000000001Z"),
+            ("0001-01-01T00:30:00.123456789", "0001-01-01T01:30:00.123456789Z"),
+            ("0001-01-01T00:59:59.999999999", "0001-01-01T01:59:59.999999999Z"),
+        ],
+    ) {
+        resolved_boundary("STD1DST0,J60,J300", input, expected);
+    }
+}
+
+#[test]
+fn local_resolution_near_maximum_ignores_nonmatching_offset_overflow() -> () {
+    for (input, expected) in Vec::from_array(
+        [
+            ("9999-12-31T23:00:00.000000001", "9999-12-31T22:00:00.000000001Z"),
+            ("9999-12-31T23:30:00.123456789", "9999-12-31T22:30:00.123456789Z"),
+            ("9999-12-31T23:59:59.999999999", "9999-12-31T22:59:59.999999999Z"),
+        ],
+    ) {
+        resolved_boundary("STD-1DST0,J60,J300", input, expected);
+    }
+}
+
+#[test]
+fn local_resolution_retains_uncertainty_about_missing_future_rules() -> () {
+    let finite = zone("Synthetic/Finite");
+    let input = local("1970-01-01T01:00:00");
+    testing::assert_eq(
+        testing::expect_ok(finite.at(utc("1970-01-01T00:00:00Z")), "known candidate").local(),
+        input,
+    );
+    match testing::expect_err(finite.resolve_local(input), "future offset is unknown") {
+        dt::Error::Unsupported(_) => (),
+        _ => testing::fail("missing future rules must remain unsupported"),
+    }
+}

@@ -210,9 +210,15 @@ impl TimeZone {
                     continue;
                 },
             };
-            match self.at(datetime.instant_value) {
-                Ok(value) => if value.local() == local {
-                    candidates.push(value);
+            match self.offset_at(datetime.instant_value) {
+                Ok(info) => if info.offset == offset {
+                    candidates.push(
+                        ZonedDateTime {
+                            datetime_value: datetime,
+                            zone_value: self,
+                            info_value: info,
+                        },
+                    );
                 },
                 Err(error) => {
                     unsupported = Option::Some(error);
