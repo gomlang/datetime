@@ -1,6 +1,6 @@
 package tests;
 
-use ecosystem::verification::reference;
+use ecosystem::testkit::reference;
 use ecosystem::datetime::examples::basic as application;
 use std::testing;
 use std::fs;
@@ -12,7 +12,7 @@ fn field(value: json::Value, name: string) -> json::Value {
 }
 
 fn reference_rows() -> Vec[json::Value] {
-    let source = reference::load_text("tests/data/reference.jsonl");
+    let source = reference::load_text(fixture_path("tests/data/reference.jsonl"));
     let rows = Vec::new();
     for line in source.split("\n") {
         if line != "" {
@@ -56,5 +56,13 @@ fn timezone_fixtures_match_pinned_checksums() -> () {
             testing::expect_ok(hash::sha256_file(root + fields[1]), "hash fixture"),
             fields[0],
         );
+    }
+}
+
+fn fixture_path(path: string) -> string {
+    if fs::is_dir("examples/basic") {
+        "examples/basic/" + path
+    } else {
+        path
     }
 }

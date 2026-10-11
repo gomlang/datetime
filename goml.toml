@@ -2,4 +2,4 @@
 path = "ecosystem::datetime"
 
 [dev-dependencies]
-"ecosystem::verification" = true
+"ecosystem::testkit" = true
