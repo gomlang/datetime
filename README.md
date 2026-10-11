@@ -111,7 +111,7 @@ Run from this library repository:
 (cd ../verification && just ecosystem-test datetime)
 ```
 
-The verification runs library tests, the example and its independent downstream verification, cached-build checks, 8,140 calendar/timezone/reference cases, and library tests under Go's race detector. The concurrent test shares one immutable zone across 12 workers performing local resolution and reverse conversion.
+The verification runs library tests, the example, cached-build checks, 8,140 calendar/timezone/reference cases, and library tests under Go's race detector. The concurrent test shares one immutable zone across 12 workers performing local resolution and reverse conversion.
 
 The native example test replays [8,140 independently produced reference vectors](examples/basic/tests/data/README.md), without running Python or a reference executable. Their original sources are Python `datetime` for Gregorian/ISO-week arithmetic and month policies. Python `zoneinfo` reads the exact bundled zone bytes for historical second offsets, negative epochs, DST gaps/folds, skipped dates, non-hour transitions, and future timestamps beyond explicit records. Go `time.LoadLocationFromTZData` is an independent oracle for synthetic POSIX cases at nonnegative epochs. RFC 9636 supplies fixed expected values for the all-year DST fixture. The retained Go reference source documents those oracle semantics; ordinary tests use the frozen independent results.
 
@@ -125,12 +125,12 @@ The library implements calendar and timezone policies, not leap-second/TAI arith
 
 ## Development and examples
 
-Requires GoML 0.1.56 or newer. The `examples/basic/` example shares the root manifest; test-only helpers are declared in `[dev-dependencies]`. From the library root, run:
+Requires the [current GoML toolchain](https://github.com/gomlang/verification/blob/main/ci/toolchain.json) with unversioned registry support. The `examples/basic/` example shares the root manifest; test-only helpers are declared in `[dev-dependencies]`. From the library root, run:
 
 ```sh
 goml run --example basic
 goml test
-goml verify --timeout 300s
+(cd ../verification && just ecosystem-test datetime)
 ```
 
-`goml test` builds the example and runs its tests. `goml verify` repeats the example checks as an independent module against an isolated registry snapshot. `(cd ../verification && just ecosystem-test datetime)` also retains the library-specific smoke and compatibility checks.
+`goml test` builds the example and runs its tests. `(cd ../verification && just ecosystem-test datetime)` runs the library-specific smoke and compatibility checks.

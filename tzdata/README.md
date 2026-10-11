@@ -21,7 +21,7 @@ The generator accepts only safe relative names whose file content begins with `T
 cd tzdata/tools
 go run . /usr/share/zoneinfo 2026c ..
 cd ../..
-../../goml-dev/stage2/bin/goml fmt
+goml fmt
 ```
 
 Record the new package version, `tzdata.zi` hash, entry count, and manifest hash here after regeneration. Generation requires local zoneinfo; building and testing the committed GoML package do not. Embedded bytes and checksums are public source data, so applications that need authenticated releases must verify their own dependency source. The library has no automatic data update mechanism; a new release requires regenerating and publishing a new package snapshot.
