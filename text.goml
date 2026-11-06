@@ -167,8 +167,11 @@ impl Offset {
         } else {
             0
         };
-        if minute > 59 || second > 59 {
-            return Result::Err(parse_error(4, "offset minute/second out of range"));
+        if minute > 59 {
+            return Result::Err(parse_error(4, "offset minute out of range"));
+        }
+        if second > 59 {
+            return Result::Err(parse_error(7, "offset second out of range"));
         }
         let total = hour * 3600 + minute * 60 + second;
         Offset::from_seconds(
