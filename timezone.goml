@@ -8,6 +8,16 @@ use io::Read;
 use std::utf8;
 use utf8::BytesUtf8;
 
+struct DescriptorReader {
+    descriptor: fd::Fd,
+}
+
+impl Read for DescriptorReader {
+    fn read(self: DescriptorReader, buffer: MutSlice[byte]) -> Result[isize, io::Error] {
+        self.descriptor.read(buffer)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct ZoneInfo {
     pub offset: Offset,
@@ -120,7 +130,7 @@ impl TimeZone {
         let file = fd::open(directory + "/" + name, fd::O_RDONLY | fd::O_NONBLOCK, 0).map_err(
             |error| Error::Io(error.to_string()),
         )?;
-        let read = file.read_to_end(16777216);
+        let read = DescriptorReader { descriptor: file }.read_to_end(16777216);
         let closed = file.close();
         let data = read.map_err(|error| Error::Io(error.to_string()))?;
         closed.map_err(|error| Error::Io(error.to_string()))?;
